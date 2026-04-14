@@ -1,4 +1,4 @@
-const CACHE = 'leximap-v1';
+const CACHE = 'sayfar-v1';
 const ASSETS = ['/', '/index.html'];
 
 self.addEventListener('install', e => {

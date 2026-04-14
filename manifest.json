@@ -1,6 +1,6 @@
 {
-  "name": "LexiMap – Vocabulary Builder",
-  "short_name": "LexiMap",
+  "name": "SayFar – Vocabulary Builder",
+  "short_name": "SayFar",
   "description": "Swipe-based vocabulary learning with knowledge graph",
   "start_url": "/",
   "display": "standalone",

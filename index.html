@@ -6,7 +6,7 @@
 <meta name="theme-color" content="#0a0a0f"/>
 <meta name="apple-mobile-web-app-capable" content="yes"/>
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"/>
-<title>LexiMap</title>
+<title>SayFar</title>
 <link rel="manifest" href="manifest.json"/>
 <link rel="preconnect" href="https://fonts.googleapis.com"/>
 <link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet"/>
@@ -184,7 +184,7 @@ html, body { height: 100%; overflow: hidden; background: var(--bg); color: var(-
   <div class="screen active" id="screen-cards">
     <div class="nav">
       <div>
-        <div class="nav-title">LexiMap</div>
+        <div class="nav-title">SayFar</div>
         <div class="nav-sub" id="cards-sub">Daily session</div>
       </div>
       <div class="nav-right" id="cards-counter">0 / 0</div>
@@ -409,12 +409,12 @@ let state = {
 
 function loadState() {
   try {
-    const s = localStorage.getItem('leximap_state');
+    const s = localStorage.getItem('sayfar_state');
     if (s) state = { ...state, ...JSON.parse(s) };
   } catch(e) {}
 }
 function saveState() {
-  try { localStorage.setItem('leximap_state', JSON.stringify(state)); } catch(e) {}
+  try { localStorage.setItem('sayfar_state', JSON.stringify(state)); } catch(e) {}
 }
 
 // Init word states
@@ -756,12 +756,12 @@ function initGraph() {
     }
   }
 
-  // Pre-settle physics
-  for (let i = 0; i < 300; i++) physicsStep(canvas.width, canvas.height, 1);
+  // Settle fully — nodes stay fixed after this
+  for (let i = 0; i < 600; i++) physicsStep(canvas.width, canvas.height, 1);
 
   gSelectedNode = null;
   gHoveredNode = null;
-  gSimulating = true;
+  gSimulating = false;
   graphInitialized = true;
   if (gAnimFrame) cancelAnimationFrame(gAnimFrame);
   graphLoop();
@@ -893,46 +893,60 @@ function drawGraph(canvas, now) {
 
     const finalAlpha = alpha * (isDimmed ? 0.25 : 1);
 
-    // Outer pulse ring for selected
+    // Vibration offset for selected node
+    const vibX = isSelected ? Math.sin(gPulse * 28) * 1.4 : 0;
+    const vibY = isSelected ? Math.cos(gPulse * 31) * 1.1 : 0;
+    // Smooth hover scale (stored per node)
+    if (!n._hoverScale) n._hoverScale = 1;
+    const targetScale = isSelected ? 1.0 : isHovered ? 1.18 : 1.0;
+    n._hoverScale += (targetScale - n._hoverScale) * 0.12;
+    const drawR = r * n._hoverScale;
+    const nx = n.x + vibX, ny = n.y + vibY;
+
+    // Outer glow ring — pulses gently for selected, soft for hovered
     if (isSelected) {
-      const pulse = 0.5 + 0.5 * Math.sin(gPulse * 3);
+      const ringPulse = 0.5 + 0.5 * Math.sin(gPulse * 4);
       ctx.beginPath();
-      ctx.arc(n.x, n.y, r + 8 + pulse * 4, 0, Math.PI*2);
-      ctx.strokeStyle = `${glow}${0.3 * finalAlpha})`;
-      ctx.lineWidth = 1.5 / gScale;
+      ctx.arc(nx, ny, drawR + 7 + ringPulse * 3, 0, Math.PI*2);
+      ctx.strokeStyle = `${glow}${0.45 * finalAlpha})`;
+      ctx.lineWidth = 1.2 / gScale;
+      ctx.stroke();
+      // second inner ring
+      ctx.beginPath();
+      ctx.arc(nx, ny, drawR + 3, 0, Math.PI*2);
+      ctx.strokeStyle = `${glow}${0.25 * finalAlpha})`;
+      ctx.lineWidth = 0.8 / gScale;
       ctx.stroke();
     }
 
     // Glow halo
-    const glowR = isSelected ? r + 12 : isHovered ? r + 8 : r + 4;
-    const glowOpacity = isSelected ? 0.3 : isHovered ? 0.2 : 0.1;
+    const glowR = isSelected ? drawR + 10 : isHovered ? drawR + 7 : drawR + 3;
+    const glowOpacity = isSelected ? 0.28 : isHovered ? 0.18 : 0.08;
     ctx.beginPath();
-    ctx.arc(n.x, n.y, glowR, 0, Math.PI*2);
+    ctx.arc(nx, ny, glowR, 0, Math.PI*2);
     ctx.fillStyle = `${glow}${glowOpacity * finalAlpha})`;
     ctx.fill();
 
     // Node circle
-    ctx.beginPath();
-    ctx.arc(n.x, n.y, r, 0, Math.PI*2);
-    ctx.fillStyle = col.replace(')', `, ${finalAlpha})`).replace('#', 'rgba(').replace('4ade80', '74,222,128').replace('60a5fa', '96,165,250').replace('f87171', '248,113,113').replace('3a3a4a', '58,58,74');
-
-    // Fallback: just use hex with globalAlpha
     ctx.globalAlpha = finalAlpha;
+    ctx.beginPath();
+    ctx.arc(nx, ny, drawR, 0, Math.PI*2);
     ctx.fillStyle = col;
     ctx.fill();
 
     // Ring border
-    ctx.strokeStyle = isSelected ? 'rgba(255,255,255,0.8)' : 'rgba(255,255,255,0.2)';
+    ctx.strokeStyle = isSelected ? 'rgba(255,255,255,0.85)' : isHovered ? 'rgba(255,255,255,0.5)' : 'rgba(255,255,255,0.18)';
     ctx.lineWidth = (isSelected ? 1.5 : 0.5) / gScale;
     ctx.stroke();
     ctx.globalAlpha = 1;
 
-    // Label
+    // Label — bold + white for selected, slightly larger for hovered
     ctx.globalAlpha = finalAlpha;
-    ctx.font = `${isSelected ? 500 : 400} ${Math.max(9, (isSelected ? 12 : 10) / gScale)}px DM Sans, sans-serif`;
+    const fontSize = isSelected ? 12 : isHovered ? 11 : 10;
+    ctx.font = `${isSelected ? 500 : 400} ${Math.max(9, fontSize / gScale)}px DM Sans, sans-serif`;
     ctx.textAlign = 'center';
-    ctx.fillStyle = isSelected ? '#ffffff' : 'rgba(240,238,232,0.8)';
-    ctx.fillText(n.word, n.x, n.y + r + 12 / gScale);
+    ctx.fillStyle = isSelected ? '#ffffff' : isHovered ? 'rgba(240,238,232,1)' : 'rgba(240,238,232,0.75)';
+    ctx.fillText(n.word, nx, ny + drawR + 12 / gScale);
     ctx.globalAlpha = 1;
   });
 
@@ -1058,15 +1072,8 @@ function initGraphInteraction() {
     const tx = e.touches[0].clientX - r.left;
     const ty = e.touches[0].clientY - r.top;
     touchStartX = tx; touchStartY = ty; touchMoved = false;
-    const w = canvasToWorld(tx, ty);
-    gDragNode = hitTestNode(w.x, w.y);
-    if (gDragNode) {
-      gDragOffNodeX = gDragNode.x - w.x;
-      gDragOffNodeY = gDragNode.y - w.y;
-      gSimulating = false;
-    } else {
-      gPanning = true; gPanX = tx; gPanY = ty;
-    }
+    gDragNode = null;
+    gPanning = true; gPanX = tx; gPanY = ty;
   }, { passive: true });
 
   canvas.addEventListener('touchmove', e => {
@@ -1090,13 +1097,7 @@ function initGraphInteraction() {
     const tx = e.touches[0].clientX - r.left;
     const ty = e.touches[0].clientY - r.top;
     if (Math.abs(tx-touchStartX) > 5 || Math.abs(ty-touchStartY) > 5) touchMoved = true;
-    if (gDragNode) {
-      const w = canvasToWorld(tx, ty);
-      gDragNode.x = w.x + gDragOffNodeX;
-      gDragNode.y = w.y + gDragOffNodeY;
-      gDragNode.vx = 0; gDragNode.vy = 0;
-      gSimulating = true;
-    } else if (gPanning) {
+    if (gPanning) {
       gOffX += tx - gPanX; gOffY += ty - gPanY;
       gPanX = tx; gPanY = ty;
     }
@@ -1126,7 +1127,6 @@ function initGraphInteraction() {
         hideGraphTooltip();
       }
     }
-    if (gDragNode) { gSimulating = true; gDragNode = null; }
     gPanning = false;
   }, { passive: true });
 
@@ -1137,16 +1137,9 @@ function initGraphInteraction() {
     const r = canvas.getBoundingClientRect();
     const mx = e.clientX - r.left, my = e.clientY - r.top;
     mouseDown = true; mouseStartX = mx; mouseStartY = my; mouseMoved = false;
-    const w = canvasToWorld(mx, my);
-    gDragNode = hitTestNode(w.x, w.y);
-    if (gDragNode) {
-      gDragOffNodeX = gDragNode.x - w.x;
-      gDragOffNodeY = gDragNode.y - w.y;
-      canvas.style.cursor = 'grabbing';
-    } else {
-      gPanning = true; gPanX = mx; gPanY = my;
-      canvas.style.cursor = 'grabbing';
-    }
+    gDragNode = null;
+    gPanning = true; gPanX = mx; gPanY = my;
+    canvas.style.cursor = 'grabbing';
   });
 
   canvas.addEventListener('mousemove', e => {
@@ -1154,12 +1147,7 @@ function initGraphInteraction() {
     const mx = e.clientX - r.left, my = e.clientY - r.top;
     if (Math.abs(mx-mouseStartX) > 3 || Math.abs(my-mouseStartY) > 3) mouseMoved = true;
     if (mouseDown) {
-      if (gDragNode) {
-        const w = canvasToWorld(mx, my);
-        gDragNode.x = w.x + gDragOffNodeX;
-        gDragNode.y = w.y + gDragOffNodeY;
-        gDragNode.vx = 0; gDragNode.vy = 0;
-      } else if (gPanning) {
+      if (gPanning) {
         gOffX += mx - gPanX; gOffY += my - gPanY;
         gPanX = mx; gPanY = my;
       }
@@ -1188,7 +1176,6 @@ function initGraphInteraction() {
         gSelectedNode = null; hideGraphTooltip();
       }
     }
-    if (gDragNode) { gSimulating = true; gDragNode = null; }
     mouseDown = false; gPanning = false;
     canvas.style.cursor = 'grab';
   });
