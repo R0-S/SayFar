@@ -1,0 +1,1300 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no"/>
+<meta name="theme-color" content="#0a0a0f"/>
+<meta name="apple-mobile-web-app-capable" content="yes"/>
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"/>
+<title>LexiMap</title>
+<link rel="manifest" href="manifest.json"/>
+<link rel="preconnect" href="https://fonts.googleapis.com"/>
+<link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet"/>
+<style>
+:root {
+  --bg: #0a0a0f;
+  --surface: #13131a;
+  --surface2: #1c1c26;
+  --border: rgba(255,255,255,0.07);
+  --border2: rgba(255,255,255,0.13);
+  --text: #f0eee8;
+  --text2: #8a8898;
+  --text3: #4a4a5a;
+  --green: #4ade80;
+  --green-dim: rgba(74,222,128,0.12);
+  --red: #f87171;
+  --red-dim: rgba(248,113,113,0.12);
+  --blue: #60a5fa;
+  --blue-dim: rgba(96,165,250,0.12);
+  --purple: #a78bfa;
+  --purple-dim: rgba(167,139,250,0.12);
+  --amber: #fbbf24;
+  --r: 16px;
+  --font-display: 'DM Serif Display', Georgia, serif;
+  --font-body: 'DM Sans', system-ui, sans-serif;
+}
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+html, body { height: 100%; overflow: hidden; background: var(--bg); color: var(--text); font-family: var(--font-body); }
+#app { height: 100%; display: flex; flex-direction: column; max-width: 430px; margin: 0 auto; position: relative; overflow: hidden; }
+
+/* SCREENS */
+.screen { position: absolute; inset: 0; display: flex; flex-direction: column; opacity: 0; pointer-events: none; transition: opacity 0.25s; }
+.screen.active { opacity: 1; pointer-events: all; }
+
+/* NAV BAR */
+.nav { display: flex; align-items: center; justify-content: space-between; padding: 52px 20px 12px; flex-shrink: 0; }
+.nav-title { font-family: var(--font-display); font-size: 26px; letter-spacing: -0.02em; color: var(--text); }
+.nav-sub { font-size: 12px; color: var(--text2); margin-top: 2px; }
+.nav-right { font-size: 12px; color: var(--text2); background: var(--surface2); border: 0.5px solid var(--border2); padding: 6px 12px; border-radius: 20px; }
+
+/* TAB BAR */
+.tabbar { display: flex; padding: 8px 12px 28px; flex-shrink: 0; gap: 4px; border-top: 0.5px solid var(--border); background: var(--bg); }
+.tab-btn { flex: 1; display: flex; flex-direction: column; align-items: center; gap: 4px; padding: 8px 4px; border: none; background: none; cursor: pointer; border-radius: 12px; transition: background 0.15s; }
+.tab-btn:hover { background: var(--surface); }
+.tab-btn.active { background: var(--surface2); }
+.tab-icon { width: 22px; height: 22px; }
+.tab-label { font-family: var(--font-body); font-size: 10px; color: var(--text2); letter-spacing: 0.03em; }
+.tab-btn.active .tab-label { color: var(--blue); }
+
+/* SWIPE SCREEN */
+#screen-cards { background: var(--bg); }
+.cards-body { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 0 20px 16px; gap: 20px; overflow: hidden; }
+
+.progress-pills { display: flex; gap: 8px; width: 100%; }
+.pill { flex: 1; background: var(--surface); border: 0.5px solid var(--border); border-radius: 12px; padding: 10px 8px; text-align: center; }
+.pill-num { font-family: var(--font-display); font-size: 22px; }
+.pill-lbl { font-size: 10px; color: var(--text2); margin-top: 1px; letter-spacing: 0.04em; text-transform: uppercase; }
+.pill.known .pill-num { color: var(--green); }
+.pill.unknown .pill-num { color: var(--red); }
+.pill.studying .pill-num { color: var(--blue); }
+
+.card-area { width: 100%; flex: 1; position: relative; display: flex; align-items: center; justify-content: center; }
+.ghost-card { position: absolute; width: calc(100% - 20px); background: var(--surface); border: 0.5px solid var(--border); border-radius: 24px; height: 280px; transform: scale(0.93) translateY(14px); opacity: 0.4; }
+.ghost-card2 { transform: scale(0.86) translateY(28px); opacity: 0.2; }
+
+.flash-card { position: absolute; width: 100%; background: var(--surface); border: 0.5px solid var(--border2); border-radius: 24px; padding: 32px 24px; cursor: grab; user-select: none; touch-action: none; will-change: transform; transition: box-shadow 0.2s; }
+.flash-card:active { cursor: grabbing; }
+.fc-pos { font-size: 10px; font-weight: 500; letter-spacing: 0.1em; text-transform: uppercase; color: var(--text3); margin-bottom: 14px; }
+.fc-word { font-family: var(--font-display); font-size: 36px; letter-spacing: -0.02em; color: var(--text); margin-bottom: 4px; }
+.fc-phonetic { font-size: 13px; color: var(--text3); margin-bottom: 20px; font-style: italic; }
+.fc-line { height: 0.5px; background: var(--border); margin-bottom: 18px; }
+.fc-translation { font-size: 17px; color: var(--text2); margin-bottom: 14px; }
+.fc-example { font-size: 12px; color: var(--text3); background: var(--surface2); border-radius: 10px; padding: 10px 12px; line-height: 1.5; border-left: 2px solid var(--border2); }
+.fc-example em { color: var(--text2); font-style: normal; }
+
+.swipe-indicator { position: absolute; top: 16px; padding: 6px 14px; border-radius: 20px; font-size: 13px; font-weight: 500; opacity: 0; transition: opacity 0.1s; pointer-events: none; }
+.swipe-indicator.known { background: var(--green-dim); color: var(--green); border: 1px solid var(--green); right: 16px; }
+.swipe-indicator.unknown { background: var(--red-dim); color: var(--red); border: 1px solid var(--red); left: 16px; }
+.swipe-indicator.studying { background: var(--blue-dim); color: var(--blue); border: 1px solid var(--blue); top: 50%; transform: translateY(-50%); left: 50%; margin-left: -44px; }
+
+.swipe-hints { display: flex; justify-content: space-between; align-items: center; width: 100%; padding: 0 4px; }
+.swipe-hint { font-size: 11px; color: var(--text3); display: flex; align-items: center; gap: 5px; }
+.sh-arrow { font-size: 14px; }
+.sh-center { flex-direction: column; gap: 2px; text-align: center; }
+
+/* LIBRARY SCREEN */
+#screen-library { background: var(--bg); }
+.lib-body { flex: 1; overflow-y: auto; padding: 0 16px 16px; }
+.lib-body::-webkit-scrollbar { display: none; }
+.section-title { font-size: 10px; font-weight: 500; letter-spacing: 0.1em; text-transform: uppercase; color: var(--text3); margin: 16px 4px 8px; }
+
+.word-card { display: flex; align-items: center; gap: 12px; padding: 12px 14px; background: var(--surface); border: 0.5px solid var(--border); border-radius: 14px; margin-bottom: 8px; cursor: pointer; transition: background 0.15s, border-color 0.15s; }
+.word-card:hover { background: var(--surface2); border-color: var(--border2); }
+.wc-info { flex: 1; }
+.wc-word { font-size: 15px; font-weight: 500; color: var(--text); }
+.wc-trans { font-size: 12px; color: var(--text2); margin-top: 2px; }
+.wc-badge { font-size: 10px; font-weight: 500; padding: 3px 9px; border-radius: 20px; white-space: nowrap; }
+.badge-new { background: var(--blue-dim); color: var(--blue); }
+.badge-review { background: rgba(251,191,36,0.12); color: var(--amber); }
+.badge-mastered { background: var(--green-dim); color: var(--green); }
+.badge-unknown { background: var(--red-dim); color: var(--red); }
+
+.lib-empty { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 12px; height: 200px; color: var(--text3); }
+.lib-empty-icon { font-size: 36px; opacity: 0.3; }
+
+/* MAP SCREEN */
+#screen-map { background: var(--bg); }
+.map-body { flex: 1; position: relative; overflow: hidden; }
+#graph-canvas { width: 100%; height: 100%; }
+.map-legend { position: absolute; bottom: 12px; left: 16px; display: flex; gap: 10px; flex-wrap: wrap; }
+.leg { display: flex; align-items: center; gap: 5px; font-size: 10px; color: var(--text2); }
+.leg-dot { width: 8px; height: 8px; border-radius: 50%; }
+.map-controls { position: absolute; top: 12px; right: 16px; display: flex; flex-direction: column; gap: 6px; }
+.map-btn { width: 32px; height: 32px; background: var(--surface); border: 0.5px solid var(--border2); border-radius: 8px; display: flex; align-items: center; justify-content: center; cursor: pointer; font-size: 16px; color: var(--text2); }
+.node-tooltip { position: absolute; background: var(--surface2); border: 0.5px solid var(--border2); border-radius: 10px; padding: 8px 12px; font-size: 12px; pointer-events: none; opacity: 0; transition: opacity 0.15s; max-width: 150px; }
+.nt-word { font-weight: 500; color: var(--text); font-size: 13px; }
+.nt-trans { color: var(--text2); margin-top: 2px; }
+.nt-state { font-size: 10px; margin-top: 4px; }
+
+/* STATS SCREEN */
+#screen-stats { background: var(--bg); }
+.stats-body { flex: 1; overflow-y: auto; padding: 0 16px 16px; }
+.stats-body::-webkit-scrollbar { display: none; }
+.stat-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 20px; }
+.stat-card { background: var(--surface); border: 0.5px solid var(--border); border-radius: 14px; padding: 16px; }
+.stat-num { font-family: var(--font-display); font-size: 32px; letter-spacing: -0.02em; }
+.stat-lbl { font-size: 11px; color: var(--text2); margin-top: 4px; }
+.chart-bar-wrap { background: var(--surface); border: 0.5px solid var(--border); border-radius: 14px; padding: 16px; margin-bottom: 10px; }
+.chart-title { font-size: 11px; color: var(--text2); text-transform: uppercase; letter-spacing: 0.06em; margin-bottom: 14px; }
+.bar-row { display: flex; align-items: center; gap: 10px; margin-bottom: 10px; }
+.bar-label { font-size: 11px; color: var(--text2); width: 70px; flex-shrink: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.bar-track { flex: 1; height: 6px; background: var(--surface2); border-radius: 3px; overflow: hidden; }
+.bar-fill { height: 100%; border-radius: 3px; transition: width 0.6s cubic-bezier(0.4,0,0.2,1); }
+.bar-count { font-size: 11px; color: var(--text3); width: 24px; text-align: right; }
+.streak-row { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 8px; }
+.streak-day { width: 28px; height: 28px; border-radius: 8px; display: flex; align-items: center; justify-content: center; font-size: 9px; color: var(--text3); border: 0.5px solid var(--border); }
+.streak-day.done { background: var(--green-dim); border-color: var(--green); color: var(--green); }
+.streak-day.today { border-color: var(--blue); color: var(--blue); }
+
+/* MODAL */
+.modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.7); display: flex; align-items: flex-end; justify-content: center; z-index: 100; opacity: 0; pointer-events: none; transition: opacity 0.25s; }
+.modal-overlay.open { opacity: 1; pointer-events: all; }
+.modal { background: var(--surface); border: 0.5px solid var(--border2); border-radius: 24px 24px 0 0; padding: 20px 20px 48px; width: 100%; max-width: 430px; transform: translateY(100%); transition: transform 0.3s cubic-bezier(0.4,0,0.2,1); }
+.modal-overlay.open .modal { transform: translateY(0); }
+.modal-handle { width: 36px; height: 4px; background: var(--border2); border-radius: 2px; margin: 0 auto 20px; }
+.modal-word { font-family: var(--font-display); font-size: 30px; color: var(--text); }
+.modal-phonetic { font-size: 13px; color: var(--text3); margin-top: 4px; font-style: italic; }
+.modal-trans { font-size: 16px; color: var(--text2); margin: 14px 0; }
+.modal-example { font-size: 13px; color: var(--text3); background: var(--surface2); border-radius: 10px; padding: 10px 12px; line-height: 1.5; margin-bottom: 20px; }
+.modal-btns { display: flex; gap: 8px; }
+.modal-btn { flex: 1; padding: 12px; border: 0.5px solid var(--border2); border-radius: 12px; background: var(--surface2); color: var(--text2); font-family: var(--font-body); font-size: 13px; cursor: pointer; transition: all 0.15s; }
+.modal-btn:hover { border-color: var(--border2); background: var(--surface); }
+.modal-btn.green { background: var(--green-dim); border-color: var(--green); color: var(--green); }
+.modal-btn.red { background: var(--red-dim); border-color: var(--red); color: var(--red); }
+.modal-btn.blue { background: var(--blue-dim); border-color: var(--blue); color: var(--blue); }
+
+/* TOAST */
+.toast { position: fixed; top: 60px; left: 50%; transform: translateX(-50%) translateY(-20px); background: var(--surface2); border: 0.5px solid var(--border2); border-radius: 20px; padding: 8px 18px; font-size: 13px; color: var(--text); z-index: 200; opacity: 0; transition: opacity 0.2s, transform 0.2s; pointer-events: none; white-space: nowrap; }
+.toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+
+/* DONE SCREEN */
+.done-screen { display: none; flex-direction: column; align-items: center; justify-content: center; flex: 1; gap: 16px; padding: 20px; text-align: center; }
+.done-screen.visible { display: flex; }
+.done-icon { font-size: 52px; }
+.done-title { font-family: var(--font-display); font-size: 28px; }
+.done-sub { font-size: 14px; color: var(--text2); line-height: 1.6; }
+.done-btn { margin-top: 8px; padding: 14px 32px; background: var(--surface2); border: 0.5px solid var(--border2); border-radius: 14px; color: var(--text); font-family: var(--font-body); font-size: 14px; cursor: pointer; }
+.done-btn:hover { background: var(--surface); }
+</style>
+</head>
+<body>
+<div id="app">
+
+  <!-- CARDS SCREEN -->
+  <div class="screen active" id="screen-cards">
+    <div class="nav">
+      <div>
+        <div class="nav-title">LexiMap</div>
+        <div class="nav-sub" id="cards-sub">Daily session</div>
+      </div>
+      <div class="nav-right" id="cards-counter">0 / 0</div>
+    </div>
+    <div class="cards-body">
+      <div class="progress-pills">
+        <div class="pill known"><div class="pill-num" id="pill-known">0</div><div class="pill-lbl">Known</div></div>
+        <div class="pill unknown"><div class="pill-num" id="pill-unknown">0</div><div class="pill-lbl">Unknown</div></div>
+        <div class="pill studying"><div class="pill-num" id="pill-studying">0</div><div class="pill-lbl">Studying</div></div>
+      </div>
+      <div class="card-area" id="card-area">
+        <div class="ghost-card ghost-card2" id="ghost2"></div>
+        <div class="ghost-card" id="ghost1"></div>
+        <div class="flash-card" id="flash-card" role="article">
+          <div class="fc-pos" id="fc-pos">noun</div>
+          <div class="fc-word" id="fc-word">—</div>
+          <div class="fc-phonetic" id="fc-phonetic"></div>
+          <div class="fc-line"></div>
+          <div class="fc-translation" id="fc-translation"></div>
+          <div class="fc-example" id="fc-example"></div>
+          <div class="swipe-indicator known" id="si-known">✓ Known</div>
+          <div class="swipe-indicator unknown" id="si-unknown">✗ Unknown</div>
+          <div class="swipe-indicator studying" id="si-study">↑ Study</div>
+        </div>
+      </div>
+      <div class="done-screen" id="done-screen">
+        <div class="done-icon">🎉</div>
+        <div class="done-title">Session complete!</div>
+        <div class="done-sub" id="done-sub"></div>
+        <button class="done-btn" onclick="restartSession()">Start again</button>
+      </div>
+      <div class="swipe-hints" id="swipe-hints">
+        <div class="swipe-hint"><span class="sh-arrow">←</span> Unknown</div>
+        <div class="swipe-hint sh-center"><span class="sh-arrow">↑</span><span>Study</span></div>
+        <div class="swipe-hint">Known <span class="sh-arrow">→</span></div>
+      </div>
+    </div>
+    <nav class="tabbar">
+      <button class="tab-btn active" onclick="showScreen('cards')" id="tab-cards">
+        <svg class="tab-icon" viewBox="0 0 22 22" fill="none"><rect x="2" y="4" width="18" height="14" rx="3" stroke="currentColor" stroke-width="1.3"/><rect x="5" y="7" width="12" height="2" rx="1" fill="currentColor" opacity=".4"/><rect x="5" y="11" width="8" height="2" rx="1" fill="currentColor" opacity=".3"/></svg>
+        <span class="tab-label">Cards</span>
+      </button>
+      <button class="tab-btn" onclick="showScreen('library')" id="tab-library">
+        <svg class="tab-icon" viewBox="0 0 22 22" fill="none"><path d="M4 5h14M4 9h10M4 13h12M4 17h8" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/></svg>
+        <span class="tab-label">Library</span>
+      </button>
+      <button class="tab-btn" onclick="showScreen('map')" id="tab-map">
+        <svg class="tab-icon" viewBox="0 0 22 22" fill="none"><circle cx="11" cy="11" r="3" stroke="currentColor" stroke-width="1.3"/><circle cx="4" cy="6" r="1.5" stroke="currentColor" stroke-width="1.2"/><circle cx="18" cy="5" r="1.5" stroke="currentColor" stroke-width="1.2"/><circle cx="5" cy="17" r="1.5" stroke="currentColor" stroke-width="1.2"/><circle cx="18" cy="16" r="1.5" stroke="currentColor" stroke-width="1.2"/><line x1="5.2" y1="7.2" x2="9" y2="9.5" stroke="currentColor" stroke-width="1" opacity=".5"/><line x1="16.8" y1="6.2" x2="13" y2="9.5" stroke="currentColor" stroke-width="1" opacity=".5"/><line x1="6" y1="16" x2="9" y2="12.5" stroke="currentColor" stroke-width="1" opacity=".5"/><line x1="17" y1="15" x2="13" y2="12.5" stroke="currentColor" stroke-width="1" opacity=".5"/></svg>
+        <span class="tab-label">Map</span>
+      </button>
+      <button class="tab-btn" onclick="showScreen('stats')" id="tab-stats">
+        <svg class="tab-icon" viewBox="0 0 22 22" fill="none"><rect x="3" y="13" width="4" height="6" rx="1" fill="currentColor" opacity=".4"/><rect x="9" y="9" width="4" height="10" rx="1" fill="currentColor" opacity=".6"/><rect x="15" y="5" width="4" height="14" rx="1" fill="currentColor" opacity=".9"/></svg>
+        <span class="tab-label">Stats</span>
+      </button>
+    </nav>
+  </div>
+
+  <!-- LIBRARY SCREEN -->
+  <div class="screen" id="screen-library">
+    <div class="nav">
+      <div><div class="nav-title">Library</div><div class="nav-sub">Your word collection</div></div>
+      <div class="nav-right" id="lib-count">0 words</div>
+    </div>
+    <div class="lib-body" id="lib-body"></div>
+    <nav class="tabbar">
+      <button class="tab-btn" onclick="showScreen('cards')" id="tab2-cards">
+        <svg class="tab-icon" viewBox="0 0 22 22" fill="none"><rect x="2" y="4" width="18" height="14" rx="3" stroke="currentColor" stroke-width="1.3"/><rect x="5" y="7" width="12" height="2" rx="1" fill="currentColor" opacity=".4"/><rect x="5" y="11" width="8" height="2" rx="1" fill="currentColor" opacity=".3"/></svg>
+        <span class="tab-label">Cards</span>
+      </button>
+      <button class="tab-btn active" onclick="showScreen('library')" id="tab2-library">
+        <svg class="tab-icon" viewBox="0 0 22 22" fill="none"><path d="M4 5h14M4 9h10M4 13h12M4 17h8" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/></svg>
+        <span class="tab-label">Library</span>
+      </button>
+      <button class="tab-btn" onclick="showScreen('map')" id="tab2-map">
+        <svg class="tab-icon" viewBox="0 0 22 22" fill="none"><circle cx="11" cy="11" r="3" stroke="currentColor" stroke-width="1.3"/><circle cx="4" cy="6" r="1.5" stroke="currentColor" stroke-width="1.2"/><circle cx="18" cy="5" r="1.5" stroke="currentColor" stroke-width="1.2"/><circle cx="5" cy="17" r="1.5" stroke="currentColor" stroke-width="1.2"/><circle cx="18" cy="16" r="1.5" stroke="currentColor" stroke-width="1.2"/><line x1="5.2" y1="7.2" x2="9" y2="9.5" stroke="currentColor" stroke-width="1" opacity=".5"/><line x1="16.8" y1="6.2" x2="13" y2="9.5" stroke="currentColor" stroke-width="1" opacity=".5"/><line x1="6" y1="16" x2="9" y2="12.5" stroke="currentColor" stroke-width="1" opacity=".5"/><line x1="17" y1="15" x2="13" y2="12.5" stroke="currentColor" stroke-width="1" opacity=".5"/></svg>
+        <span class="tab-label">Map</span>
+      </button>
+      <button class="tab-btn" onclick="showScreen('stats')" id="tab2-stats">
+        <svg class="tab-icon" viewBox="0 0 22 22" fill="none"><rect x="3" y="13" width="4" height="6" rx="1" fill="currentColor" opacity=".4"/><rect x="9" y="9" width="4" height="10" rx="1" fill="currentColor" opacity=".6"/><rect x="15" y="5" width="4" height="14" rx="1" fill="currentColor" opacity=".9"/></svg>
+        <span class="tab-label">Stats</span>
+      </button>
+    </nav>
+  </div>
+
+  <!-- MAP SCREEN -->
+  <div class="screen" id="screen-map">
+    <div class="nav">
+      <div><div class="nav-title">Knowledge Map</div><div class="nav-sub" id="map-sub">0 words linked</div></div>
+    </div>
+    <div class="map-body">
+      <canvas id="graph-canvas"></canvas>
+      <div class="map-controls">
+        <div class="map-btn" onclick="graphZoom(1.2)" title="Zoom in">+</div>
+        <div class="map-btn" onclick="graphZoom(0.8)" title="Zoom out">−</div>
+        <div class="map-btn" onclick="graphReset()" title="Reset">⌖</div>
+      </div>
+      <div class="map-legend">
+        <div class="leg"><div class="leg-dot" style="background:#4ade80"></div>Known</div>
+        <div class="leg"><div class="leg-dot" style="background:#60a5fa"></div>Learning</div>
+        <div class="leg"><div class="leg-dot" style="background:#a78bfa"></div>Core</div>
+        <div class="leg"><div class="leg-dot" style="background:#4a4a5a"></div>Unknown</div>
+      </div>
+      <div class="node-tooltip" id="node-tooltip">
+        <div class="nt-word" id="nt-word"></div>
+        <div class="nt-trans" id="nt-trans"></div>
+        <div class="nt-state" id="nt-state"></div>
+      </div>
+    </div>
+    <nav class="tabbar">
+      <button class="tab-btn" onclick="showScreen('cards')" id="tab3-cards">
+        <svg class="tab-icon" viewBox="0 0 22 22" fill="none"><rect x="2" y="4" width="18" height="14" rx="3" stroke="currentColor" stroke-width="1.3"/><rect x="5" y="7" width="12" height="2" rx="1" fill="currentColor" opacity=".4"/><rect x="5" y="11" width="8" height="2" rx="1" fill="currentColor" opacity=".3"/></svg>
+        <span class="tab-label">Cards</span>
+      </button>
+      <button class="tab-btn" onclick="showScreen('library')" id="tab3-library">
+        <svg class="tab-icon" viewBox="0 0 22 22" fill="none"><path d="M4 5h14M4 9h10M4 13h12M4 17h8" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/></svg>
+        <span class="tab-label">Library</span>
+      </button>
+      <button class="tab-btn active" onclick="showScreen('map')" id="tab3-map">
+        <svg class="tab-icon" viewBox="0 0 22 22" fill="none"><circle cx="11" cy="11" r="3" stroke="currentColor" stroke-width="1.3"/><circle cx="4" cy="6" r="1.5" stroke="currentColor" stroke-width="1.2"/><circle cx="18" cy="5" r="1.5" stroke="currentColor" stroke-width="1.2"/><circle cx="5" cy="17" r="1.5" stroke="currentColor" stroke-width="1.2"/><circle cx="18" cy="16" r="1.5" stroke="currentColor" stroke-width="1.2"/><line x1="5.2" y1="7.2" x2="9" y2="9.5" stroke="currentColor" stroke-width="1" opacity=".5"/><line x1="16.8" y1="6.2" x2="13" y2="9.5" stroke="currentColor" stroke-width="1" opacity=".5"/><line x1="6" y1="16" x2="9" y2="12.5" stroke="currentColor" stroke-width="1" opacity=".5"/><line x1="17" y1="15" x2="13" y2="12.5" stroke="currentColor" stroke-width="1" opacity=".5"/></svg>
+        <span class="tab-label">Map</span>
+      </button>
+      <button class="tab-btn" onclick="showScreen('stats')" id="tab3-stats">
+        <svg class="tab-icon" viewBox="0 0 22 22" fill="none"><rect x="3" y="13" width="4" height="6" rx="1" fill="currentColor" opacity=".4"/><rect x="9" y="9" width="4" height="10" rx="1" fill="currentColor" opacity=".6"/><rect x="15" y="5" width="4" height="14" rx="1" fill="currentColor" opacity=".9"/></svg>
+        <span class="tab-label">Stats</span>
+      </button>
+    </nav>
+  </div>
+
+  <!-- STATS SCREEN -->
+  <div class="screen" id="screen-stats">
+    <div class="nav">
+      <div><div class="nav-title">Progress</div><div class="nav-sub">Your learning journey</div></div>
+    </div>
+    <div class="stats-body">
+      <div class="stat-grid">
+        <div class="stat-card"><div class="stat-num" id="s-total" style="color:var(--text)">0</div><div class="stat-lbl">Total words seen</div></div>
+        <div class="stat-card"><div class="stat-num" id="s-known" style="color:var(--green)">0</div><div class="stat-lbl">Known</div></div>
+        <div class="stat-card"><div class="stat-num" id="s-studying" style="color:var(--blue)">0</div><div class="stat-lbl">In study library</div></div>
+        <div class="stat-card"><div class="stat-num" id="s-unknown" style="color:var(--red)">0</div><div class="stat-lbl">Need practice</div></div>
+      </div>
+      <div class="chart-bar-wrap">
+        <div class="chart-title">Top studied words</div>
+        <div id="bar-chart"></div>
+      </div>
+      <div class="chart-bar-wrap">
+        <div class="chart-title">Weekly streak</div>
+        <div class="streak-row" id="streak-row"></div>
+      </div>
+    </div>
+    <nav class="tabbar">
+      <button class="tab-btn" onclick="showScreen('cards')" id="tab4-cards">
+        <svg class="tab-icon" viewBox="0 0 22 22" fill="none"><rect x="2" y="4" width="18" height="14" rx="3" stroke="currentColor" stroke-width="1.3"/><rect x="5" y="7" width="12" height="2" rx="1" fill="currentColor" opacity=".4"/><rect x="5" y="11" width="8" height="2" rx="1" fill="currentColor" opacity=".3"/></svg>
+        <span class="tab-label">Cards</span>
+      </button>
+      <button class="tab-btn" onclick="showScreen('library')" id="tab4-library">
+        <svg class="tab-icon" viewBox="0 0 22 22" fill="none"><path d="M4 5h14M4 9h10M4 13h12M4 17h8" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/></svg>
+        <span class="tab-label">Library</span>
+      </button>
+      <button class="tab-btn" onclick="showScreen('map')" id="tab4-map">
+        <svg class="tab-icon" viewBox="0 0 22 22" fill="none"><circle cx="11" cy="11" r="3" stroke="currentColor" stroke-width="1.3"/><circle cx="4" cy="6" r="1.5" stroke="currentColor" stroke-width="1.2"/><circle cx="18" cy="5" r="1.5" stroke="currentColor" stroke-width="1.2"/><circle cx="5" cy="17" r="1.5" stroke="currentColor" stroke-width="1.2"/><circle cx="18" cy="16" r="1.5" stroke="currentColor" stroke-width="1.2"/><line x1="5.2" y1="7.2" x2="9" y2="9.5" stroke="currentColor" stroke-width="1" opacity=".5"/><line x1="16.8" y1="6.2" x2="13" y2="9.5" stroke="currentColor" stroke-width="1" opacity=".5"/><line x1="6" y1="16" x2="9" y2="12.5" stroke="currentColor" stroke-width="1" opacity=".5"/><line x1="17" y1="15" x2="13" y2="12.5" stroke="currentColor" stroke-width="1" opacity=".5"/></svg>
+        <span class="tab-label">Map</span>
+      </button>
+      <button class="tab-btn active" onclick="showScreen('stats')" id="tab4-stats">
+        <svg class="tab-icon" viewBox="0 0 22 22" fill="none"><rect x="3" y="13" width="4" height="6" rx="1" fill="currentColor" opacity=".4"/><rect x="9" y="9" width="4" height="10" rx="1" fill="currentColor" opacity=".6"/><rect x="15" y="5" width="4" height="14" rx="1" fill="currentColor" opacity=".9"/></svg>
+        <span class="tab-label">Stats</span>
+      </button>
+    </nav>
+  </div>
+
+  <!-- MODAL -->
+  <div class="modal-overlay" id="modal-overlay" onclick="closeModal(event)">
+    <div class="modal">
+      <div class="modal-handle"></div>
+      <div class="modal-word" id="modal-word"></div>
+      <div class="modal-phonetic" id="modal-phonetic"></div>
+      <div class="modal-trans" id="modal-trans"></div>
+      <div class="modal-example" id="modal-example"></div>
+      <div class="modal-btns">
+        <button class="modal-btn red" onclick="modalAction('unknown')">✗ Unknown</button>
+        <button class="modal-btn blue" onclick="modalAction('studying')">↑ Study</button>
+        <button class="modal-btn green" onclick="modalAction('known')">✓ Known</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- TOAST -->
+  <div class="toast" id="toast"></div>
+</div>
+
+<script>
+// ─── DATA ───────────────────────────────────────────────────────────────────
+const WORDS = [
+  { id:1, word:'Resilience', phonetic:'/rɪˈzɪliəns/', pos:'noun', translation:'Устойчивость, жизнестойкость', example:'Her <em>resilience</em> helped her recover from every setback.', tags:['emotions','strength'] },
+  { id:2, word:'Eloquent', phonetic:'/ˈelɪkwənt/', pos:'adjective', translation:'Красноречивый, выразительный', example:'The <em>eloquent</em> speaker captivated the entire audience.', tags:['speech','communication'] },
+  { id:3, word:'Persevere', phonetic:'/ˌpɜːrsɪˈvɪər/', pos:'verb', translation:'Настойчиво продолжать', example:'You must <em>persevere</em> even when things get difficult.', tags:['strength','action'] },
+  { id:4, word:'Ambiguous', phonetic:'/æmˈbɪɡjuəs/', pos:'adjective', translation:'Неоднозначный, двусмысленный', example:'The contract contained several <em>ambiguous</em> clauses.', tags:['language','thinking'] },
+  { id:5, word:'Serendipity', phonetic:'/ˌserənˈdɪpɪti/', pos:'noun', translation:'Счастливая случайность', example:'By pure <em>serendipity</em>, I found my dream job.', tags:['luck','life'] },
+  { id:6, word:'Ephemeral', phonetic:'/ɪˈfemərəl/', pos:'adjective', translation:'Мимолётный, кратковременный', example:'Fame can be <em>ephemeral</em> — here today, gone tomorrow.', tags:['time','philosophy'] },
+  { id:7, word:'Tenacity', phonetic:'/tɪˈnæsɪti/', pos:'noun', translation:'Упорство, цепкость', example:'His <em>tenacity</em> in the face of failure was admirable.', tags:['strength','emotions'] },
+  { id:8, word:'Eloquence', phonetic:'/ˈelɪkwəns/', pos:'noun', translation:'Красноречие', example:'Her <em>eloquence</em> moved the crowd to tears.', tags:['speech','communication'] },
+  { id:9, word:'Pragmatic', phonetic:'/præɡˈmætɪk/', pos:'adjective', translation:'Прагматичный, практичный', example:'We need a <em>pragmatic</em> solution, not an idealistic one.', tags:['thinking','personality'] },
+  { id:10, word:'Melancholy', phonetic:'/ˈmelənkɒli/', pos:'noun/adj', translation:'Меланхолия, грусть', example:'A feeling of <em>melancholy</em> swept over him at dusk.', tags:['emotions','mood'] },
+  { id:11, word:'Verbose', phonetic:'/vɜːrˈboʊs/', pos:'adjective', translation:'Многословный, болтливый', example:'The report was too <em>verbose</em> and needed editing.', tags:['language','communication'] },
+  { id:12, word:'Fortitude', phonetic:'/ˈfɔːrtɪtjuːd/', pos:'noun', translation:'Стойкость духа', example:'She faced the diagnosis with remarkable <em>fortitude</em>.', tags:['strength','emotions'] },
+  { id:13, word:'Benevolent', phonetic:'/bɪˈnevələnt/', pos:'adjective', translation:'Доброжелательный, благосклонный', example:'The <em>benevolent</em> donor funded the entire school.', tags:['personality','values'] },
+  { id:14, word:'Scrutinize', phonetic:'/ˈskruːtɪnaɪz/', pos:'verb', translation:'Тщательно изучать', example:'The committee will <em>scrutinize</em> every detail.', tags:['action','thinking'] },
+  { id:15, word:'Vivid', phonetic:'/ˈvɪvɪd/', pos:'adjective', translation:'Яркий, живой, чёткий', example:'She has a <em>vivid</em> imagination and loves storytelling.', tags:['senses','description'] },
+  { id:16, word:'Nuance', phonetic:'/ˈnjuːɑːns/', pos:'noun', translation:'Нюанс, оттенок', example:'Understanding cultural <em>nuance</em> is key to good communication.', tags:['language','thinking'] },
+  { id:17, word:'Audacious', phonetic:'/ɔːˈdeɪʃəs/', pos:'adjective', translation:'Дерзкий, смелый', example:'It was an <em>audacious</em> plan, but it worked.', tags:['personality','action'] },
+  { id:18, word:'Lethargic', phonetic:'/lɪˈθɑːrdʒɪk/', pos:'adjective', translation:'Вялый, апатичный', example:'After the long flight, he felt completely <em>lethargic</em>.', tags:['emotions','mood'] },
+  { id:19, word:'Concise', phonetic:'/kənˈsaɪs/', pos:'adjective', translation:'Краткий, лаконичный', example:'Please be <em>concise</em> — we only have five minutes.', tags:['language','communication'] },
+  { id:20, word:'Bewildered', phonetic:'/bɪˈwɪldərd/', pos:'adjective', translation:'Растерянный, сбитый с толку', example:'She looked completely <em>bewildered</em> by the question.', tags:['emotions','reactions'] },
+];
+
+// State
+let state = {
+  words: {},      // id -> { status: 'unseen'|'known'|'unknown'|'studying', reviewCount: 0 }
+  session: [],    // current deck
+  sessionIdx: 0,
+  stats: { sessions: 0, streak: [false,false,true,true,true,false,true] }
+};
+
+function loadState() {
+  try {
+    const s = localStorage.getItem('leximap_state');
+    if (s) state = { ...state, ...JSON.parse(s) };
+  } catch(e) {}
+}
+function saveState() {
+  try { localStorage.setItem('leximap_state', JSON.stringify(state)); } catch(e) {}
+}
+
+// Init word states
+function initWords() {
+  WORDS.forEach(w => {
+    if (!state.words[w.id]) state.words[w.id] = { status: 'unseen', reviewCount: 0 };
+  });
+}
+
+function getWordData(id) { return WORDS.find(w => w.id === id); }
+function getWordState(id) { return state.words[id] || { status: 'unseen', reviewCount: 0 }; }
+
+// ─── CARDS SCREEN ────────────────────────────────────────────────────────────
+let cardIdx = 0;
+let isDragging = false;
+let startX = 0, startY = 0, currentX = 0, currentY = 0;
+let cardEl, cardArea;
+
+function buildSession() {
+  // Unseen first, then unknown, then studying for review
+  const unseen = WORDS.filter(w => getWordState(w.id).status === 'unseen').map(w => w.id);
+  const unknown = WORDS.filter(w => getWordState(w.id).status === 'unknown').map(w => w.id);
+  const studying = WORDS.filter(w => getWordState(w.id).status === 'studying').map(w => w.id);
+  state.session = [...unseen, ...unknown.slice(0, 5), ...studying.slice(0, 5)];
+  state.sessionIdx = 0;
+  saveState();
+}
+
+function restartSession() {
+  buildSession();
+  showCard();
+}
+
+function showCard() {
+  cardEl = document.getElementById('flash-card');
+  const doneScreen = document.getElementById('done-screen');
+  const hintsEl = document.getElementById('swipe-hints');
+
+  if (state.sessionIdx >= state.session.length) {
+    cardEl.style.display = 'none';
+    document.getElementById('ghost1').style.display = 'none';
+    document.getElementById('ghost2').style.display = 'none';
+    hintsEl.style.display = 'none';
+    doneScreen.classList.add('visible');
+    const known = Object.values(state.words).filter(w => w.status === 'known').length;
+    const studying = Object.values(state.words).filter(w => w.status === 'studying').length;
+    document.getElementById('done-sub').textContent = `${state.session.length} cards reviewed · ${known} known · ${studying} in study library`;
+    return;
+  }
+
+  doneScreen.classList.remove('visible');
+  cardEl.style.display = '';
+  document.getElementById('ghost1').style.display = '';
+  document.getElementById('ghost2').style.display = '';
+  hintsEl.style.display = '';
+
+  const id = state.session[state.sessionIdx];
+  const wd = getWordData(id);
+  document.getElementById('fc-word').textContent = wd.word;
+  document.getElementById('fc-phonetic').textContent = wd.phonetic;
+  document.getElementById('fc-pos').textContent = wd.pos;
+  document.getElementById('fc-translation').textContent = wd.translation;
+  document.getElementById('fc-example').innerHTML = wd.example;
+  document.getElementById('cards-counter').textContent = `${state.sessionIdx + 1} / ${state.session.length}`;
+  cardEl.style.transform = '';
+  cardEl.style.opacity = '';
+  cardEl.style.transition = '';
+  hideIndicators();
+  updatePills();
+}
+
+function updatePills() {
+  const ws = Object.values(state.words);
+  document.getElementById('pill-known').textContent = ws.filter(w => w.status === 'known').length;
+  document.getElementById('pill-unknown').textContent = ws.filter(w => w.status === 'unknown').length;
+  document.getElementById('pill-studying').textContent = ws.filter(w => w.status === 'studying').length;
+}
+
+function markWord(id, status) {
+  state.words[id].status = status;
+  state.words[id].reviewCount = (state.words[id].reviewCount || 0) + 1;
+  saveState();
+}
+
+function hideIndicators() {
+  ['si-known','si-unknown','si-study'].forEach(id => {
+    document.getElementById(id).style.opacity = 0;
+  });
+}
+
+function animateCardOut(dx, dy, status, callback) {
+  cardEl = document.getElementById('flash-card');
+  const angle = dx * 0.1;
+  const targetX = dx > 0 ? window.innerWidth : dx < 0 ? -window.innerWidth : 0;
+  const targetY = dy < -80 ? -window.innerHeight * 0.6 : 0;
+  cardEl.style.transition = 'transform 0.35s cubic-bezier(0.4,0,0.2,1), opacity 0.35s';
+  cardEl.style.transform = `translateX(${targetX}px) translateY(${targetY}px) rotate(${angle}deg)`;
+  cardEl.style.opacity = '0';
+  setTimeout(() => {
+    state.sessionIdx++;
+    showCard();
+    if (callback) callback();
+  }, 380);
+}
+
+// Touch / Mouse handlers
+function initSwipe() {
+  cardEl = document.getElementById('flash-card');
+
+  const onStart = (x, y) => {
+    isDragging = true;
+    startX = x; startY = y; currentX = x; currentY = y;
+    cardEl.style.transition = 'none';
+  };
+  const onMove = (x, y) => {
+    if (!isDragging) return;
+    currentX = x; currentY = y;
+    const dx = currentX - startX;
+    const dy = currentY - startY;
+    const angle = dx * 0.08;
+    cardEl.style.transform = `translateX(${dx}px) translateY(${dy}px) rotate(${angle}deg)`;
+
+    // Show indicators
+    const siKnown = document.getElementById('si-known');
+    const siUnknown = document.getElementById('si-unknown');
+    const siStudy = document.getElementById('si-study');
+
+    if (dy < -60 && Math.abs(dx) < 60) {
+      siStudy.style.opacity = Math.min(1, Math.abs(dy) / 120);
+      siKnown.style.opacity = 0; siUnknown.style.opacity = 0;
+    } else if (dx > 40) {
+      siKnown.style.opacity = Math.min(1, dx / 120);
+      siUnknown.style.opacity = 0; siStudy.style.opacity = 0;
+    } else if (dx < -40) {
+      siUnknown.style.opacity = Math.min(1, Math.abs(dx) / 120);
+      siKnown.style.opacity = 0; siStudy.style.opacity = 0;
+    } else {
+      hideIndicators();
+    }
+  };
+  const onEnd = () => {
+    if (!isDragging) return;
+    isDragging = false;
+    const dx = currentX - startX;
+    const dy = currentY - startY;
+    const id = state.session[state.sessionIdx];
+
+    if (dy < -80 && Math.abs(dx) < 80) {
+      markWord(id, 'studying');
+      toast('↑ Added to study library');
+      animateCardOut(0, -200, 'studying');
+    } else if (dx > 80) {
+      markWord(id, 'known');
+      toast('✓ Marked as known');
+      animateCardOut(300, dy * 0.3, 'known');
+    } else if (dx < -80) {
+      markWord(id, 'unknown');
+      toast('✗ Marked as unknown');
+      animateCardOut(-300, dy * 0.3, 'unknown');
+    } else {
+      cardEl.style.transition = 'transform 0.3s cubic-bezier(0.34,1.56,0.64,1)';
+      cardEl.style.transform = '';
+      hideIndicators();
+    }
+    updatePills();
+  };
+
+  cardEl.addEventListener('touchstart', e => { onStart(e.touches[0].clientX, e.touches[0].clientY); }, { passive: true });
+  cardEl.addEventListener('touchmove', e => { onMove(e.touches[0].clientX, e.touches[0].clientY); e.preventDefault(); }, { passive: false });
+  cardEl.addEventListener('touchend', onEnd);
+  cardEl.addEventListener('mousedown', e => onStart(e.clientX, e.clientY));
+  window.addEventListener('mousemove', e => { if (isDragging) onMove(e.clientX, e.clientY); });
+  window.addEventListener('mouseup', onEnd);
+}
+
+// ─── LIBRARY SCREEN ──────────────────────────────────────────────────────────
+function renderLibrary() {
+  const body = document.getElementById('lib-body');
+  body.innerHTML = '';
+
+  const byStatus = { studying: [], unknown: [], known: [] };
+  WORDS.forEach(w => {
+    const s = getWordState(w.id).status;
+    if (s !== 'unseen' && byStatus[s]) byStatus[s].push(w);
+  });
+
+  const total = byStatus.studying.length + byStatus.unknown.length + byStatus.known.length;
+  document.getElementById('lib-count').textContent = `${total} words`;
+
+  if (total === 0) {
+    body.innerHTML = `<div class="lib-empty"><div class="lib-empty-icon">📚</div><div style="font-size:15px;color:var(--text2)">No words yet</div><div style="font-size:12px;color:var(--text3);margin-top:4px">Start swiping cards to build your library</div></div>`;
+    return;
+  }
+
+  const sections = [
+    { key: 'studying', label: 'In study library', badge: 'new' },
+    { key: 'unknown', label: 'Need practice', badge: 'unknown' },
+    { key: 'known', label: 'Mastered', badge: 'mastered' },
+  ];
+
+  sections.forEach(({ key, label, badge }) => {
+    const words = byStatus[key];
+    if (!words.length) return;
+    const sec = document.createElement('div');
+    sec.innerHTML = `<div class="section-title">${label} · ${words.length}</div>`;
+    words.forEach(w => {
+      const rc = getWordState(w.id).reviewCount;
+      const badgeClass = badge === 'new' ? (rc > 2 ? 'badge-review' : 'badge-new') : `badge-${badge}`;
+      const badgeText = badge === 'new' ? (rc > 2 ? 'Review' : 'New') : badge === 'unknown' ? 'Practice' : 'Mastered';
+      const div = document.createElement('div');
+      div.className = 'word-card';
+      div.innerHTML = `<div class="wc-info"><div class="wc-word">${w.word}</div><div class="wc-trans">${w.translation}</div></div><div class="wc-badge ${badgeClass}">${badgeText}</div>`;
+      div.onclick = () => openModal(w.id);
+      sec.appendChild(div);
+    });
+    body.appendChild(sec);
+  });
+}
+
+// ─── MODAL ───────────────────────────────────────────────────────────────────
+let modalWordId = null;
+function openModal(id) {
+  modalWordId = id;
+  const wd = getWordData(id);
+  document.getElementById('modal-word').textContent = wd.word;
+  document.getElementById('modal-phonetic').textContent = wd.phonetic;
+  document.getElementById('modal-trans').textContent = wd.translation;
+  document.getElementById('modal-example').innerHTML = wd.example;
+  document.getElementById('modal-overlay').classList.add('open');
+}
+function closeModal(e) {
+  if (e.target === document.getElementById('modal-overlay')) {
+    document.getElementById('modal-overlay').classList.remove('open');
+  }
+}
+function modalAction(status) {
+  if (modalWordId) {
+    markWord(modalWordId, status);
+    document.getElementById('modal-overlay').classList.remove('open');
+    renderLibrary();
+    updatePills();
+    const labels = { known: '✓ Known', unknown: '✗ Unknown', studying: '↑ Added to study' };
+    toast(labels[status]);
+  }
+}
+
+// roundRect polyfill for older browsers
+if (!CanvasRenderingContext2D.prototype.roundRect) {
+  CanvasRenderingContext2D.prototype.roundRect = function(x, y, w, h, r) {
+    this.beginPath();
+    this.moveTo(x + r, y);
+    this.lineTo(x + w - r, y);
+    this.quadraticCurveTo(x + w, y, x + w, y + r);
+    this.lineTo(x + w, y + h - r);
+    this.quadraticCurveTo(x + w, y + h, x + w - r, y + h);
+    this.lineTo(x + r, y + h);
+    this.quadraticCurveTo(x, y + h, x, y + h - r);
+    this.lineTo(x, y + r);
+    this.quadraticCurveTo(x, y, x + r, y);
+    this.closePath();
+  };
+}
+
+
+let graphNodes = [], graphEdges = [];
+let gScale = 1, gOffX = 0, gOffY = 0;
+let graphInitialized = false;
+let gAnimFrame = null;
+let gSimulating = false;
+let gSelectedNode = null;
+let gHoveredNode = null;
+let gDragNode = null;
+let gDragOffNodeX = 0, gDragOffNodeY = 0;
+let gFilterStatus = 'all';
+let gPulse = 0;
+
+// pan state
+let gPanning = false, gPanX = 0, gPanY = 0;
+// pinch state
+let gPinchDist = 0, gPinchScaleStart = 1;
+
+function nodeColor(status) {
+  if (status === 'known') return '#4ade80';
+  if (status === 'studying') return '#60a5fa';
+  if (status === 'unknown') return '#f87171';
+  return '#3a3a4a';
+}
+function nodeGlow(status) {
+  if (status === 'known') return 'rgba(74,222,128,';
+  if (status === 'studying') return 'rgba(96,165,250,';
+  if (status === 'unknown') return 'rgba(248,113,113,';
+  return 'rgba(100,100,120,';
+}
+function nodeRadius(n) {
+  const base = n.status === 'studying' ? 9 : n.status === 'known' ? 7 : 5;
+  return n === gSelectedNode ? base + 4 : n === gHoveredNode ? base + 2 : base;
+}
+
+function initGraph() {
+  const canvas = document.getElementById('graph-canvas');
+  const parent = canvas.parentElement;
+  canvas.width = parent.clientWidth;
+  canvas.height = parent.clientHeight;
+
+  const visibleWords = WORDS.filter(w => getWordState(w.id).status !== 'unseen');
+  if (visibleWords.length === 0) {
+    const ctx = canvas.getContext('2d');
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    ctx.fillStyle = 'rgba(255,255,255,0.18)';
+    ctx.font = '14px DM Sans, sans-serif';
+    ctx.textAlign = 'center';
+    ctx.fillText('Swipe some cards to build your map', canvas.width/2, canvas.height/2);
+    return;
+  }
+
+  // Build nodes — staggered entry animation
+  graphNodes = visibleWords.map((w, i) => {
+    const angle = (i / visibleWords.length) * Math.PI * 2;
+    const r = 90 + Math.random() * 100;
+    return {
+      id: w.id, word: w.word, translation: w.translation,
+      status: getWordState(w.id).status, tags: w.tags,
+      x: canvas.width/2 + Math.cos(angle) * r,
+      y: canvas.height/2 + Math.sin(angle) * r,
+      vx: 0, vy: 0,
+      born: performance.now() + i * 60,
+      alpha: 0,
+    };
+  });
+
+  // Edges
+  graphEdges = [];
+  for (let i = 0; i < graphNodes.length; i++) {
+    for (let j = i+1; j < graphNodes.length; j++) {
+      const wi = WORDS.find(w => w.id === graphNodes[i].id);
+      const wj = WORDS.find(w => w.id === graphNodes[j].id);
+      const shared = wi.tags.filter(t => wj.tags.includes(t));
+      if (shared.length) graphEdges.push({ a:i, b:j, strength:shared.length, label:shared[0] });
+    }
+  }
+
+  // Pre-settle physics
+  for (let i = 0; i < 300; i++) physicsStep(canvas.width, canvas.height, 1);
+
+  gSelectedNode = null;
+  gHoveredNode = null;
+  gSimulating = true;
+  graphInitialized = true;
+  if (gAnimFrame) cancelAnimationFrame(gAnimFrame);
+  graphLoop();
+  document.getElementById('map-sub').textContent = `${graphNodes.length} words · ${graphEdges.length} connections`;
+}
+
+function physicsStep(W, H, damping) {
+  const k = 90, damp = damping ?? 0.85;
+  graphNodes.forEach((n, i) => {
+    if (n === gDragNode) return;
+    let fx = 0, fy = 0;
+    graphNodes.forEach((m, j) => {
+      if (i===j) return;
+      const dx = n.x - m.x, dy = n.y - m.y;
+      const d = Math.max(Math.sqrt(dx*dx+dy*dy), 1);
+      const f = (k*k) / d;
+      fx += dx/d * f * 0.1;
+      fy += dy/d * f * 0.1;
+    });
+    // center gravity
+    fx += (W/2 - n.x) * 0.004;
+    fy += (H/2 - n.y) * 0.004;
+    n.vx = (n.vx + fx) * damp;
+    n.vy = (n.vy + fy) * damp;
+  });
+  graphEdges.forEach(e => {
+    const a = graphNodes[e.a], b = graphNodes[e.b];
+    if (a === gDragNode || b === gDragNode) return;
+    const dx = b.x - a.x, dy = b.y - a.y;
+    const d = Math.max(Math.sqrt(dx*dx+dy*dy), 1);
+    const rest = 80 + (2 - e.strength) * 30;
+    const f = (d - rest) / d * 0.18 * e.strength;
+    a.vx += dx * f; a.vy += dy * f;
+    b.vx -= dx * f; b.vy -= dy * f;
+  });
+  const W2 = document.getElementById('graph-canvas').width || 300;
+  const H2 = document.getElementById('graph-canvas').height || 400;
+  graphNodes.forEach(n => {
+    if (n === gDragNode) return;
+    n.x = Math.max(40, Math.min(W2-40, n.x + n.vx));
+    n.y = Math.max(30, Math.min(H2-30, n.y + n.vy));
+  });
+}
+
+function graphLoop() {
+  const now = performance.now();
+  gPulse = now * 0.002;
+  const canvas = document.getElementById('graph-canvas');
+  if (!canvas) return;
+
+  if (gSimulating) physicsStep(canvas.width, canvas.height);
+
+  // Fade in nodes
+  graphNodes.forEach(n => {
+    if (now > n.born) n.alpha = Math.min(1, n.alpha + 0.04);
+  });
+
+  drawGraph(canvas, now);
+  gAnimFrame = requestAnimationFrame(graphLoop);
+}
+
+function drawGraph(canvas, now) {
+  const ctx = canvas.getContext('2d');
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+  // Subtle star-field background
+  ctx.save();
+  for (let i = 0; i < 40; i++) {
+    const sx = ((i * 137.5 + gOffX * 0.05) % canvas.width + canvas.width) % canvas.width;
+    const sy = ((i * 97.3 + gOffY * 0.05) % canvas.height + canvas.height) % canvas.height;
+    const br = 0.08 + 0.06 * Math.sin(now * 0.001 + i);
+    ctx.beginPath();
+    ctx.arc(sx, sy, 0.8, 0, Math.PI*2);
+    ctx.fillStyle = `rgba(255,255,255,${br})`;
+    ctx.fill();
+  }
+  ctx.restore();
+
+  ctx.save();
+  ctx.translate(gOffX, gOffY);
+  ctx.scale(gScale, gScale);
+
+  const filtered = gFilterStatus === 'all'
+    ? graphNodes
+    : graphNodes.filter(n => n.status === gFilterStatus);
+  const filteredIds = new Set(filtered.map(n => n.id));
+
+  // Draw edges
+  graphEdges.forEach(e => {
+    const a = graphNodes[e.a], b = graphNodes[e.b];
+    if (!filteredIds.has(a.id) || !filteredIds.has(b.id)) return;
+    const alpha = Math.min(a.alpha, b.alpha);
+    const isHighlighted = gSelectedNode && (graphNodes[e.a] === gSelectedNode || graphNodes[e.b] === gSelectedNode);
+    const opacity = isHighlighted ? 0.55 : (gSelectedNode ? 0.04 : 0.1 + e.strength * 0.05);
+
+    ctx.beginPath();
+    ctx.moveTo(a.x, a.y);
+    ctx.lineTo(b.x, b.y);
+    ctx.strokeStyle = isHighlighted
+      ? `rgba(167,139,250,${opacity * alpha})`
+      : `rgba(255,255,255,${opacity * alpha})`;
+    ctx.lineWidth = isHighlighted ? 1.5 / gScale : 0.7 / gScale;
+    ctx.stroke();
+
+    // Edge label on highlighted edges
+    if (isHighlighted && alpha > 0.8 && gScale > 0.6) {
+      const mx = (a.x + b.x) / 2, my = (a.y + b.y) / 2;
+      ctx.save();
+      ctx.fillStyle = 'rgba(167,139,250,0.7)';
+      ctx.font = `${9 / gScale}px DM Sans, sans-serif`;
+      ctx.textAlign = 'center';
+      ctx.fillText(e.label, mx, my - 4 / gScale);
+      ctx.restore();
+    }
+  });
+
+  // Draw nodes
+  filtered.forEach(n => {
+    const r = nodeRadius(n);
+    const col = nodeColor(n.status);
+    const glow = nodeGlow(n.status);
+    const alpha = n.alpha;
+    const isSelected = n === gSelectedNode;
+    const isHovered = n === gHoveredNode;
+    const isDimmed = gSelectedNode && !isSelected && !graphEdges.some(e =>
+      (graphNodes[e.a] === gSelectedNode && graphNodes[e.b] === n) ||
+      (graphNodes[e.b] === gSelectedNode && graphNodes[e.a] === n)
+    );
+
+    const finalAlpha = alpha * (isDimmed ? 0.25 : 1);
+
+    // Outer pulse ring for selected
+    if (isSelected) {
+      const pulse = 0.5 + 0.5 * Math.sin(gPulse * 3);
+      ctx.beginPath();
+      ctx.arc(n.x, n.y, r + 8 + pulse * 4, 0, Math.PI*2);
+      ctx.strokeStyle = `${glow}${0.3 * finalAlpha})`;
+      ctx.lineWidth = 1.5 / gScale;
+      ctx.stroke();
+    }
+
+    // Glow halo
+    const glowR = isSelected ? r + 12 : isHovered ? r + 8 : r + 4;
+    const glowOpacity = isSelected ? 0.3 : isHovered ? 0.2 : 0.1;
+    ctx.beginPath();
+    ctx.arc(n.x, n.y, glowR, 0, Math.PI*2);
+    ctx.fillStyle = `${glow}${glowOpacity * finalAlpha})`;
+    ctx.fill();
+
+    // Node circle
+    ctx.beginPath();
+    ctx.arc(n.x, n.y, r, 0, Math.PI*2);
+    ctx.fillStyle = col.replace(')', `, ${finalAlpha})`).replace('#', 'rgba(').replace('4ade80', '74,222,128').replace('60a5fa', '96,165,250').replace('f87171', '248,113,113').replace('3a3a4a', '58,58,74');
+
+    // Fallback: just use hex with globalAlpha
+    ctx.globalAlpha = finalAlpha;
+    ctx.fillStyle = col;
+    ctx.fill();
+
+    // Ring border
+    ctx.strokeStyle = isSelected ? 'rgba(255,255,255,0.8)' : 'rgba(255,255,255,0.2)';
+    ctx.lineWidth = (isSelected ? 1.5 : 0.5) / gScale;
+    ctx.stroke();
+    ctx.globalAlpha = 1;
+
+    // Label
+    ctx.globalAlpha = finalAlpha;
+    ctx.font = `${isSelected ? 500 : 400} ${Math.max(9, (isSelected ? 12 : 10) / gScale)}px DM Sans, sans-serif`;
+    ctx.textAlign = 'center';
+    ctx.fillStyle = isSelected ? '#ffffff' : 'rgba(240,238,232,0.8)';
+    ctx.fillText(n.word, n.x, n.y + r + 12 / gScale);
+    ctx.globalAlpha = 1;
+  });
+
+  ctx.restore();
+
+  // HUD filter pills (screen space)
+  drawFilterPills(ctx, canvas);
+}
+
+function drawFilterPills(ctx, canvas) {
+  const pills = [
+    { key: 'all', label: 'All' },
+    { key: 'known', label: 'Known', col: '#4ade80' },
+    { key: 'studying', label: 'Study', col: '#60a5fa' },
+    { key: 'unknown', label: 'Unknown', col: '#f87171' },
+  ];
+  const pw = 58, ph = 24, gap = 6;
+  const totalW = pills.length * pw + (pills.length-1) * gap;
+  let x = (canvas.width - totalW) / 2;
+  const y = 12;
+  pills.forEach(p => {
+    const active = gFilterStatus === p.key;
+    ctx.beginPath();
+    ctx.roundRect(x, y, pw, ph, 12);
+    ctx.fillStyle = active ? (p.col || 'rgba(255,255,255,0.15)') : 'rgba(20,20,30,0.7)';
+    ctx.fill();
+    ctx.strokeStyle = active ? 'rgba(255,255,255,0.3)' : 'rgba(255,255,255,0.08)';
+    ctx.lineWidth = 0.5;
+    ctx.stroke();
+    ctx.fillStyle = active ? '#0a0a0f' : 'rgba(200,200,220,0.7)';
+    ctx.font = `${active ? 500 : 400} 10px DM Sans, sans-serif`;
+    ctx.textAlign = 'center';
+    ctx.fillText(p.label, x + pw/2, y + 16);
+    x += pw + gap;
+  });
+}
+
+function graphZoom(factor) {
+  const canvas = document.getElementById('graph-canvas');
+  const cx = canvas.width/2, cy = canvas.height/2;
+  const newScale = Math.max(0.3, Math.min(4, gScale * factor));
+  gOffX = cx - (cx - gOffX) * newScale / gScale;
+  gOffY = cy - (cy - gOffY) * newScale / gScale;
+  gScale = newScale;
+}
+function graphReset() {
+  gScale = 1; gOffX = 0; gOffY = 0;
+  gSelectedNode = null;
+  hideGraphTooltip();
+}
+
+function canvasToWorld(x, y) {
+  return { x: (x - gOffX) / gScale, y: (y - gOffY) / gScale };
+}
+
+function hitTestNode(wx, wy) {
+  let best = null, bestD = Infinity;
+  graphNodes.forEach(n => {
+    const d = Math.sqrt((n.x-wx)**2 + (n.y-wy)**2);
+    const r = nodeRadius(n) + 8;
+    if (d < r && d < bestD) { best = n; bestD = d; }
+  });
+  return best;
+}
+
+function hideGraphTooltip() {
+  document.getElementById('node-tooltip').style.opacity = 0;
+}
+
+function showNodeTooltip(n, sx, sy, canvas) {
+  const tt = document.getElementById('node-tooltip');
+  const rect = canvas.getBoundingClientRect();
+  const labels = { known:'✓ Known', studying:'↑ Studying', unknown:'✗ Unknown' };
+  document.getElementById('nt-word').textContent = n.word;
+  document.getElementById('nt-trans').textContent = n.translation;
+  document.getElementById('nt-state').textContent = labels[n.status] || '';
+  document.getElementById('nt-state').style.color = nodeColor(n.status);
+  let tx = sx + 14, ty = sy - 50;
+  if (tx + 160 > canvas.width) tx = sx - 160;
+  if (ty < 0) ty = sy + 14;
+  tt.style.left = tx + 'px';
+  tt.style.top = ty + 'px';
+  tt.style.opacity = 1;
+}
+
+function initGraphInteraction() {
+  const canvas = document.getElementById('graph-canvas');
+
+  // Filter pill tap (screen space)
+  function checkFilterTap(x, y) {
+    const pills = ['all','known','studying','unknown'];
+    const pw = 58, ph = 24, gap = 6;
+    const totalW = pills.length * pw + (pills.length-1)*gap;
+    let px = (canvas.width - totalW)/2;
+    const py = 12;
+    for (const key of pills) {
+      if (x >= px && x <= px+pw && y >= py && y <= py+ph) {
+        gFilterStatus = key;
+        gSelectedNode = null;
+        hideGraphTooltip();
+        return true;
+      }
+      px += pw + gap;
+    }
+    return false;
+  }
+
+  // ── TOUCH ──────────────────────────────────────────────────────────────────
+  let touchStartX = 0, touchStartY = 0, touchMoved = false;
+  let pinchActive = false;
+
+  canvas.addEventListener('touchstart', e => {
+    if (e.touches.length === 2) {
+      pinchActive = true;
+      const dx = e.touches[0].clientX - e.touches[1].clientX;
+      const dy = e.touches[0].clientY - e.touches[1].clientY;
+      gPinchDist = Math.sqrt(dx*dx+dy*dy);
+      gPinchScaleStart = gScale;
+      return;
+    }
+    pinchActive = false;
+    const r = canvas.getBoundingClientRect();
+    const tx = e.touches[0].clientX - r.left;
+    const ty = e.touches[0].clientY - r.top;
+    touchStartX = tx; touchStartY = ty; touchMoved = false;
+    const w = canvasToWorld(tx, ty);
+    gDragNode = hitTestNode(w.x, w.y);
+    if (gDragNode) {
+      gDragOffNodeX = gDragNode.x - w.x;
+      gDragOffNodeY = gDragNode.y - w.y;
+      gSimulating = false;
+    } else {
+      gPanning = true; gPanX = tx; gPanY = ty;
+    }
+  }, { passive: true });
+
+  canvas.addEventListener('touchmove', e => {
+    if (e.touches.length === 2 && pinchActive) {
+      const dx = e.touches[0].clientX - e.touches[1].clientX;
+      const dy = e.touches[0].clientY - e.touches[1].clientY;
+      const d = Math.sqrt(dx*dx+dy*dy);
+      const factor = d / gPinchDist;
+      const mx = (e.touches[0].clientX + e.touches[1].clientX) / 2;
+      const my = (e.touches[0].clientY + e.touches[1].clientY) / 2;
+      const r = canvas.getBoundingClientRect();
+      const cx = mx - r.left, cy = my - r.top;
+      const newScale = Math.max(0.3, Math.min(4, gPinchScaleStart * factor));
+      gOffX = cx - (cx - gOffX) * newScale / gScale;
+      gOffY = cy - (cy - gOffY) * newScale / gScale;
+      gScale = newScale;
+      return;
+    }
+    if (e.touches.length !== 1) return;
+    const r = canvas.getBoundingClientRect();
+    const tx = e.touches[0].clientX - r.left;
+    const ty = e.touches[0].clientY - r.top;
+    if (Math.abs(tx-touchStartX) > 5 || Math.abs(ty-touchStartY) > 5) touchMoved = true;
+    if (gDragNode) {
+      const w = canvasToWorld(tx, ty);
+      gDragNode.x = w.x + gDragOffNodeX;
+      gDragNode.y = w.y + gDragOffNodeY;
+      gDragNode.vx = 0; gDragNode.vy = 0;
+      gSimulating = true;
+    } else if (gPanning) {
+      gOffX += tx - gPanX; gOffY += ty - gPanY;
+      gPanX = tx; gPanY = ty;
+    }
+  }, { passive: true });
+
+  canvas.addEventListener('touchend', e => {
+    pinchActive = false;
+    if (!touchMoved && e.changedTouches.length) {
+      const r = canvas.getBoundingClientRect();
+      const tx = e.changedTouches[0].clientX - r.left;
+      const ty = e.changedTouches[0].clientY - r.top;
+      if (checkFilterTap(tx, ty)) { gDragNode = null; gPanning = false; return; }
+      const w = canvasToWorld(tx, ty);
+      const n = hitTestNode(w.x, w.y);
+      if (n) {
+        if (gSelectedNode === n) {
+          // double-tap: open modal
+          openModal(n.id);
+          gSelectedNode = null;
+          hideGraphTooltip();
+        } else {
+          gSelectedNode = n;
+          showNodeTooltip(n, tx, ty, canvas);
+        }
+      } else {
+        gSelectedNode = null;
+        hideGraphTooltip();
+      }
+    }
+    if (gDragNode) { gSimulating = true; gDragNode = null; }
+    gPanning = false;
+  }, { passive: true });
+
+  // ── MOUSE ──────────────────────────────────────────────────────────────────
+  let mouseDown = false, mouseStartX = 0, mouseStartY = 0, mouseMoved = false;
+
+  canvas.addEventListener('mousedown', e => {
+    const r = canvas.getBoundingClientRect();
+    const mx = e.clientX - r.left, my = e.clientY - r.top;
+    mouseDown = true; mouseStartX = mx; mouseStartY = my; mouseMoved = false;
+    const w = canvasToWorld(mx, my);
+    gDragNode = hitTestNode(w.x, w.y);
+    if (gDragNode) {
+      gDragOffNodeX = gDragNode.x - w.x;
+      gDragOffNodeY = gDragNode.y - w.y;
+      canvas.style.cursor = 'grabbing';
+    } else {
+      gPanning = true; gPanX = mx; gPanY = my;
+      canvas.style.cursor = 'grabbing';
+    }
+  });
+
+  canvas.addEventListener('mousemove', e => {
+    const r = canvas.getBoundingClientRect();
+    const mx = e.clientX - r.left, my = e.clientY - r.top;
+    if (Math.abs(mx-mouseStartX) > 3 || Math.abs(my-mouseStartY) > 3) mouseMoved = true;
+    if (mouseDown) {
+      if (gDragNode) {
+        const w = canvasToWorld(mx, my);
+        gDragNode.x = w.x + gDragOffNodeX;
+        gDragNode.y = w.y + gDragOffNodeY;
+        gDragNode.vx = 0; gDragNode.vy = 0;
+      } else if (gPanning) {
+        gOffX += mx - gPanX; gOffY += my - gPanY;
+        gPanX = mx; gPanY = my;
+      }
+    } else {
+      const w = canvasToWorld(mx, my);
+      const h = hitTestNode(w.x, w.y);
+      gHoveredNode = h;
+      canvas.style.cursor = h ? 'pointer' : 'grab';
+      if (h) showNodeTooltip(h, mx, my, canvas);
+      else hideGraphTooltip();
+    }
+  });
+
+  canvas.addEventListener('mouseup', e => {
+    const r = canvas.getBoundingClientRect();
+    const mx = e.clientX - r.left, my = e.clientY - r.top;
+    if (!mouseMoved) {
+      if (checkFilterTap(mx, my)) { mouseDown = false; gDragNode = null; gPanning = false; canvas.style.cursor = 'grab'; return; }
+      const w = canvasToWorld(mx, my);
+      const n = hitTestNode(w.x, w.y);
+      if (n) {
+        gSelectedNode = (gSelectedNode === n) ? null : n;
+        if (gSelectedNode) showNodeTooltip(n, mx, my, canvas);
+        else hideGraphTooltip();
+      } else {
+        gSelectedNode = null; hideGraphTooltip();
+      }
+    }
+    if (gDragNode) { gSimulating = true; gDragNode = null; }
+    mouseDown = false; gPanning = false;
+    canvas.style.cursor = 'grab';
+  });
+
+  // Scroll to zoom
+  canvas.addEventListener('wheel', e => {
+    e.preventDefault();
+    const r = canvas.getBoundingClientRect();
+    const cx = e.clientX - r.left, cy = e.clientY - r.top;
+    const factor = e.deltaY < 0 ? 1.1 : 0.9;
+    const newScale = Math.max(0.3, Math.min(4, gScale * factor));
+    gOffX = cx - (cx - gOffX) * newScale / gScale;
+    gOffY = cy - (cy - gOffY) * newScale / gScale;
+    gScale = newScale;
+  }, { passive: false });
+
+  canvas.style.cursor = 'grab';
+}
+
+// ─── STATS ───────────────────────────────────────────────────────────────────
+function renderStats() {
+  const ws = WORDS.map(w => ({ ...w, state: getWordState(w.id) }));
+  const known = ws.filter(w => w.state.status === 'known').length;
+  const unknown = ws.filter(w => w.state.status === 'unknown').length;
+  const studying = ws.filter(w => w.state.status === 'studying').length;
+  const total = ws.filter(w => w.state.status !== 'unseen').length;
+
+  document.getElementById('s-total').textContent = total;
+  document.getElementById('s-known').textContent = known;
+  document.getElementById('s-unknown').textContent = unknown;
+  document.getElementById('s-studying').textContent = studying;
+
+  // Bar chart
+  const top = ws.filter(w => w.state.reviewCount > 0).sort((a, b) => b.state.reviewCount - a.state.reviewCount).slice(0, 6);
+  const maxCount = top.length ? Math.max(...top.map(w => w.state.reviewCount)) : 1;
+  const barChart = document.getElementById('bar-chart');
+  barChart.innerHTML = top.length ? top.map(w => {
+    const pct = Math.round((w.state.reviewCount / maxCount) * 100);
+    const col = nodeColor(w.state.status);
+    return `<div class="bar-row"><div class="bar-label">${w.word}</div><div class="bar-track"><div class="bar-fill" style="width:${pct}%;background:${col}"></div></div><div class="bar-count">${w.state.reviewCount}</div></div>`;
+  }).join('') : '<div style="font-size:12px;color:var(--text3);padding:8px 0">No data yet — start swiping!</div>';
+
+  // Streak
+  const days = ['M','T','W','T','F','S','S'];
+  const streakRow = document.getElementById('streak-row');
+  streakRow.innerHTML = state.stats.streak.map((done, i) => {
+    const cls = i === 6 ? 'streak-day today' : done ? 'streak-day done' : 'streak-day';
+    return `<div class="${cls}">${days[i]}</div>`;
+  }).join('');
+}
+
+// ─── NAVIGATION ──────────────────────────────────────────────────────────────
+const screens = ['cards', 'library', 'map', 'stats'];
+function showScreen(name) {
+  screens.forEach(s => {
+    document.getElementById(`screen-${s}`).classList.toggle('active', s === name);
+    [1,2,3,4].forEach(n => {
+      const el = document.getElementById(`tab${n > 1 ? n + '-' : '-'}${s}`);
+      if (el) el.classList.toggle('active', s === name);
+    });
+  });
+  if (name === 'library') renderLibrary();
+  if (name === 'map') {
+    if (gAnimFrame) { cancelAnimationFrame(gAnimFrame); gAnimFrame = null; }
+    graphInitialized = false;
+    setTimeout(() => {
+      initGraph();
+      if (!window._graphInteractionInited) {
+        initGraphInteraction();
+        window._graphInteractionInited = true;
+      }
+    }, 50);
+  } else {
+    if (gAnimFrame) { cancelAnimationFrame(gAnimFrame); gAnimFrame = null; }
+  }
+  if (name === 'stats') renderStats();
+}
+
+// ─── TOAST ───────────────────────────────────────────────────────────────────
+let toastTimer;
+function toast(msg) {
+  const el = document.getElementById('toast');
+  el.textContent = msg;
+  el.classList.add('show');
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => el.classList.remove('show'), 1800);
+}
+
+// ─── INIT ────────────────────────────────────────────────────────────────────
+loadState();
+initWords();
+buildSession();
+initSwipe();
+showCard();
+
+if ('serviceWorker' in navigator) {
+  navigator.serviceWorker.register('sw.js').catch(() => {});
+}
+
+window.restartSession = restartSession;
+window.showScreen = showScreen;
+window.openModal = openModal;
+window.closeModal = closeModal;
+window.modalAction = modalAction;
+window.graphZoom = graphZoom;
+window.graphReset = graphReset;
+</script>
+</body>
+</html>
